@@ -14,3 +14,16 @@ class Contact(models.Model):
 
     def __str__(self):
         return self.email
+
+
+class Product(models.Model):
+    name = models.CharField(max_length=200, verbose_name="Название")
+    model = models.CharField(max_length=100, verbose_name="Модель")
+    release_date = models.DateField(verbose_name="Дата выхода продукта на рынок")
+
+    class Meta:
+        verbose_name = "Продукт"
+        verbose_name_plural = "Продукты"
+
+    def __str__(self):
+        return f"Название: {self.name}, модель: {self.model}"
