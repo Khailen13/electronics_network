@@ -1,4 +1,4 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.utils.html import format_html
 
 from network.models import NetworkNode, Product, Contact
@@ -28,6 +28,8 @@ class ProductAdmin(admin.ModelAdmin):
 class NetworkNodeAdmin(admin.ModelAdmin):
     list_display = [
         "name",
+        "node_type",
+        "level",
         "contact",
         "supplier_link",
         "supplier_debt",
@@ -52,7 +54,11 @@ class NetworkNodeAdmin(admin.ModelAdmin):
         "supplier_debt",
     ]
 
+    actions = ["clear_debt"]
+
     def supplier_link(self, obj):
+        """Создает HTML-ссылку на поставщика при отображении списка звеньев торговой сети."""
+
         if obj.supplier:
             supplier = obj.supplier
             url = f"/admin/network/networknode/{supplier.id}/change/"
@@ -62,6 +68,18 @@ class NetworkNodeAdmin(admin.ModelAdmin):
     supplier_link.short_description = "Поставщик"
 
     def supplier_link_detailed(self, obj):
+        """Создает HTML-ссылку на поставщика при детальном отображении звена торговой сети."""
+
         return self.supplier_link(obj)
 
     supplier_link_detailed.short_description = "Ссылка на поставщика"
+
+    def clear_debt(self, request, queryset):
+        """Admin action для очистки задолженности перед поставщиком."""
+
+        updated = queryset.update(supplier_debt=0)
+        self.message_user(
+            request, f"Задолженность очищена для {updated} объектов.", messages.SUCCESS
+        )
+
+    clear_debt.short_description = "Очистить задолженность перед поставщиком"
