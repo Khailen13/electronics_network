@@ -14,7 +14,7 @@ class Contact(models.Model):
         verbose_name_plural = "Контакты"
 
     def __str__(self):
-        return self.email
+        return f"{self.country}, {self.city}, ул. {self.street}, д. {self.building_number}"
 
 
 class Product(models.Model):
@@ -27,7 +27,7 @@ class Product(models.Model):
         verbose_name_plural = "Продукты"
 
     def __str__(self):
-        return f"Название: {self.name}, модель: {self.model}"
+        return f"{self.name} - {self.model} ({self.release_date})"
 
 
 class NetworkNode(models.Model):
