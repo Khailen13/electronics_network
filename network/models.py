@@ -48,7 +48,7 @@ class NetworkNode(models.Model):
     )
     supplier = models.ForeignKey(
         to="self",
-        on_delete=models.SET_NULL,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         verbose_name="Поставщик",
