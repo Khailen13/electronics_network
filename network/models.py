@@ -14,7 +14,9 @@ class Contact(models.Model):
         verbose_name_plural = "Контакты"
 
     def __str__(self):
-        return f"{self.country}, {self.city}, ул. {self.street}, д. {self.building_number}"
+        return (
+            f"{self.country}, {self.city}, ул. {self.street}, д. {self.building_number}"
+        )
 
 
 class Product(models.Model):
@@ -72,8 +74,6 @@ class NetworkNode(models.Model):
     def clean(self):
         """Валидация уровней иерархии."""
 
-        super().clean()
-
         if self.supplier is None:
             self.level = 0
         else:
@@ -82,14 +82,29 @@ class NetworkNode(models.Model):
         if self.node_type == "factory" and self.supplier:
             raise ValidationError("У завода не может быть поставщика")
 
+        if self.node_type != "factory" and not self.supplier:
+            raise ValidationError("Укажите поставщика")
+
         if self.level > 2:
             raise ValidationError(
                 f"Торговая сеть с поставщиком {self.supplier} уже имеет 3 уровня. Выберите другого поставщика"
             )
 
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
+    def clean_products(self):
+        """Проверяет наличие продуктов у поставщика."""
+        if not self.supplier:
+            return
+
+        current_products = set(self.products.all())
+        supplier_products = set(self.supplier.products.all())
+
+        invalid_products = current_products - supplier_products
+
+        if invalid_products:
+            product_names = ", ".join(str(p) for p in invalid_products)
+            supplier_name = self.supplier.name
+
+            raise ValidationError(f"Следующие продукты отсутствуют у поставщика '{supplier_name}': {product_names}.")
 
     def __str__(self):
         return f"{self.get_node_type_display()}: {self.name}"
