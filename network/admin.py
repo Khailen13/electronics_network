@@ -1,3 +1,5 @@
+from itertools import product
+
 from django.contrib import admin, messages
 from django.utils.html import format_html
 
@@ -32,6 +34,7 @@ class NetworkNodeAdmin(admin.ModelAdmin):
         "level",
         "contact",
         "supplier_link",
+        "display_products",
         "supplier_debt",
         "created_at",
     ]
@@ -55,6 +58,25 @@ class NetworkNodeAdmin(admin.ModelAdmin):
     ]
 
     actions = ["clear_debt"]
+
+    def display_products(self, obj):
+        """Отображает список продуктов в общем списке звеньев."""
+
+        products = obj.products.all()
+
+        if not products:
+            return "-"
+
+        displayed_products = list(products)[:2]
+        display = ", ".join([str(p) for p in displayed_products])
+
+        not_displayed_products_count = len(products) - 2
+        if not_displayed_products_count > 0:
+            display += f" и ещё {not_displayed_products_count}"
+
+        return display
+
+    display_products.short_description = "Продукты"
 
     def supplier_link(self, obj):
         """Создает HTML-ссылку на поставщика при отображении списка звеньев торговой сети."""
