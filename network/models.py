@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 
 class Contact(models.Model):
@@ -30,6 +31,11 @@ class Product(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.model} ({self.release_date})"
+
+    def clean(self):
+        """Валидация даты выпуска продукта."""
+        if self.release_date > timezone.now().date():
+            raise ValidationError("Продаваемая продукция уже должна быть выпущена.")
 
 
 class NetworkNode(models.Model):
