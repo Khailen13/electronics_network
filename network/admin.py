@@ -1,7 +1,10 @@
-from itertools import product
-
 from django.contrib import admin, messages
+from django.db import transaction
+from django.db.models.signals import m2m_changed
+from django.dispatch import receiver
+from django import forms
 from django.utils.html import format_html
+from rest_framework.exceptions import ValidationError
 
 from network.models import NetworkNode, Product, Contact
 
@@ -26,8 +29,38 @@ class ProductAdmin(admin.ModelAdmin):
     ]
 
 
+class NetworkNodeAdminForm(forms.ModelForm):
+    class Meta:
+        model = NetworkNode
+        fields = "__all__"
+
+    def clean(self):
+        """Валидация формы."""
+        cleaned_data = super().clean()
+
+        if not self.errors:
+            products = cleaned_data.get("products")
+            supplier = cleaned_data.get("supplier")
+            node_type = cleaned_data.get("node_type")
+
+            if supplier and node_type != "factory" and products:
+                supplier_products = set(supplier.products.all())
+                selected_products = set(products)
+
+                invalid_products = selected_products - supplier_products
+                if invalid_products:
+                    product_names = ", ".join(str(p) for p in invalid_products)
+                    raise forms.ValidationError(
+                        f"Следующие продукты отсутствуют у поставщика '{supplier.name}': {product_names}"
+                    )
+
+        return cleaned_data
+
+
 @admin.register(NetworkNode)
 class NetworkNodeAdmin(admin.ModelAdmin):
+    form = NetworkNodeAdminForm
+
     list_display = [
         "name",
         "node_type",
