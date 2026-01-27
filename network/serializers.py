@@ -1,4 +1,10 @@
+from logging import raiseExceptions
+
+from django.db import transaction
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+from django.core.exceptions import ValidationError as DjangoValidationError
+
 from network.models import Contact, Product, NetworkNode
 
 
@@ -21,35 +27,42 @@ class NetworkNodeWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = NetworkNode
-        fields = (
-            "id",
-            "name",
-            "node_type",
-            "contact",
-            "products",
-            "supplier",
-            "supplier_debt",
-            "created_at",
-            "level",
-        )
+        fields = "__all__"
 
         read_only_fields = ["created_at", "level"]
+
+    def _handle_products(self, node, products_data):
+        """Обрабатывает продукты для узла сети."""
+        if products_data is None:
+            return
+
+        product_objects = []
+        for product_data in products_data:
+            product, created = Product.objects.get_or_create(
+                name=product_data["name"],
+                model=product_data["model"],
+                release_date=product_data["release_date"]
+            )
+            product_objects.append(product)
+
+        node.products.set(product_objects)
+
+        try:
+            node.clean_products()
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({
+                "products": str(e)
+            })
 
     def create(self, validated_data):
         """Создание звена с вложенными контактами и продуктами."""
         contact_data = validated_data.pop("contact")
         products_data = validated_data.pop("products", [])
 
-        contact = Contact.objects.create(**contact_data)
-        node = NetworkNode.objects.create(contact=contact, **validated_data)
-
-        for product_data in products_data:
-            product, created = Product.objects.get_or_create(
-                name=product_data["name"],
-                model=product_data["model"],
-                defaults=product_data
-            )
-            node.products.add(product)
+        with transaction.atomic():
+            contact = Contact.objects.create(**contact_data)
+            node = NetworkNode.objects.create(contact=contact, **validated_data)
+            self._handle_products(node, products_data)
 
         return node
 
@@ -57,31 +70,25 @@ class NetworkNodeWriteSerializer(serializers.ModelSerializer):
         """Обновление данных звена с запретом изменения долга перед поставщиком."""
         validated_data.pop("supplier_debt", None)
         contact_data = validated_data.pop("contact", None)
-        if contact_data:
-            contact_serializer = ContactSerializer(
-                instance.contact,
-                data=contact_data,
-                partial=True
-            )
-            if contact_serializer.is_valid():
-                contact_serializer.save()
-
         products_data = validated_data.pop("products", None)
-        if products_data is not None:
-            instance.products.clear()
-            for product_data in products_data:
-                product, created = Product.objects.get_or_create(
-                    name=product_data["name"],
-                    model=product_data["model"],
-                    defaults=product_data
+
+        with transaction.atomic():
+            if contact_data:
+                serializer = ContactSerializer(
+                    instance.contact,
+                    data=contact_data,
+                    partial=True
                 )
-                instance.products.add(product)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
 
-        instance.save()
-        return instance
+            self._handle_products(instance, products_data)
+
+            return instance
 
 
 class NetworkNodeReadSerializer(serializers.ModelSerializer):
