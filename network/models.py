@@ -96,6 +96,9 @@ class NetworkNode(models.Model):
                 f"Торговая сеть с поставщиком {self.supplier} уже имеет 3 уровня. Выберите другого поставщика"
             )
 
+        if self.pk and self.supplier and self.supplier.id == self.id:
+            raise ValidationError("Нельзя указывать себя в качестве поставщика")
+
     def clean_products(self):
         """Проверяет наличие продуктов у поставщика."""
         if not self.supplier:
