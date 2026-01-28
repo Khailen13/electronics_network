@@ -119,5 +119,10 @@ class NetworkNode(models.Model):
 
             raise ValidationError(f"Следующие продукты отсутствуют у поставщика '{supplier_name}': {product_names}.")
 
+    def save(self, *args, **kwargs):
+        """Сохраняет после валидации."""
+        self.full_clean()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.get_node_type_display()}: {self.name}"
