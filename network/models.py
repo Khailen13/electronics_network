@@ -37,6 +37,10 @@ class Product(models.Model):
         if self.release_date > timezone.now().date():
             raise ValidationError("Продаваемая продукция уже должна быть выпущена.")
 
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
 
 class NetworkNode(models.Model):
     NODE_TYPES = [
