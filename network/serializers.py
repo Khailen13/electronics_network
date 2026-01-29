@@ -69,7 +69,15 @@ class NetworkNodeWriteSerializer(serializers.ModelSerializer):
         products_data = validated_data.pop("products", [])
 
         with transaction.atomic():
-            node = NetworkNode.objects.create(**validated_data)
+            node = NetworkNode(**validated_data)
+
+            try:
+                node.full_clean()
+            except DjangoValidationError as e:
+                raise serializers.ValidationError(e.message_dict)
+
+            node.save()
+
             Contact.objects.create(network_node=node, **contact_data)
             self._handle_products(node, products_data)
 
@@ -97,6 +105,12 @@ class NetworkNodeWriteSerializer(serializers.ModelSerializer):
 
             for attr, value in validated_data.items():
                 setattr(instance, attr, value)
+
+            try:
+                instance.full_clean()
+            except DjangoValidationError as e:
+                raise serializers.ValidationError(e.message_dict)
+
             instance.save()
 
             self._handle_products(instance, products_data)
