@@ -77,7 +77,11 @@ class NetworkNodeWriteSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         """Обновление данных звена с запретом изменения долга перед поставщиком."""
-        validated_data.pop("supplier_debt", None)
+        if "supplier_debt" in validated_data:
+            raise serializers.ValidationError({
+                "supplier_debt": "Изменение задолженности перед поставщиком через API запрещено."
+            })
+
         contact_data = validated_data.pop("contact", None)
         products_data = validated_data.pop("products", None)
 
