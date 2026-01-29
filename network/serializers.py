@@ -4,6 +4,7 @@ from django.db import transaction
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils import timezone
 
 from network.models import Contact, Product, NetworkNode
 
@@ -15,6 +16,14 @@ class ContactSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
+    def validate_release_date(self, value):
+        """Валидация даты релиза для API."""
+        if value > timezone.now().date():
+            raise serializers.ValidationError(
+                "Продаваемая продукция уже должна быть выпущена."
+            )
+        return value
+
     class Meta:
         model = Product
         fields = "__all__"
