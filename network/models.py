@@ -82,7 +82,7 @@ class NetworkNode(models.Model):
         verbose_name_plural = "Звенья сети"
 
     def clean(self):
-        """Валидация уровней иерархии."""
+        """Проверка уровней иерархии и изменения поставщика."""
 
         if self.supplier is None:
             self.level = 0
@@ -102,6 +102,59 @@ class NetworkNode(models.Model):
 
         if self.pk and self.supplier and self.supplier.id == self.id:
             raise ValidationError("Нельзя указывать себя в качестве поставщика")
+
+        if self.pk and self.supplier_id:
+            old = NetworkNode.objects.get(pk=self.pk)
+            if old.supplier_id != self.supplier_id:
+                self._validate_supplier_change(old)
+
+    def _validate_supplier_change(self, old_instance):
+        """Валидация изменения поставщика."""
+
+        if old_instance.supplier_debt > 0:
+            raise ValidationError(
+                "Нельзя изменить поставщика при наличии задолженности"
+            )
+
+        if self._would_exceed_max_depth():
+            raise ValidationError(
+                "Выбрать указанного поставщика невозможно - это приводит к превышению глубины 3-х уровневой иерархии"
+            )
+
+        if not self._new_supplier_has_all_products():
+            raise ValidationError(
+                "У нового поставщика нет необходимых продуктов"
+            )
+
+    def _would_exceed_max_depth(self):
+        """Проверяет непревышение максимальной глубины иерархии."""
+        new_self_level = self.supplier.level + 1
+        max_descendant_depth = self._get_max_descendant_depth()
+        total_depth = new_self_level + max_descendant_depth
+        return total_depth > 2
+
+    def _get_max_descendant_depth(self):
+        """Ищет максимальный уровень иерархии покупателей-перепродавцов."""
+        max_depth = 0
+        for reseller in self.networknode_set.all():
+            if max_depth >= 2:
+                break
+
+            reseller_depth = reseller._get_max_descendant_depth()
+            max_depth = max(max_depth, reseller_depth + 1)
+
+        return max_depth
+
+    def _new_supplier_has_all_products(self):
+        """Проверяет наличие всех продуктов покупателей-перепродавцов у нового поставщика."""
+
+        required_products = set()
+        for reseller in self.networknode_set.all():
+            required_products.update(reseller.products.all())
+
+        supplier_products = set(self.supplier.products.all())
+
+        return required_products.issubset(supplier_products)
 
     def clean_products(self):
         """Проверяет наличие продуктов у поставщика."""
