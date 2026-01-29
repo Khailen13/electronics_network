@@ -60,8 +60,8 @@ class NetworkNodeWriteSerializer(serializers.ModelSerializer):
         products_data = validated_data.pop("products", [])
 
         with transaction.atomic():
-            contact = Contact.objects.create(**contact_data)
-            node = NetworkNode.objects.create(contact=contact, **validated_data)
+            node = NetworkNode.objects.create(**validated_data)
+            Contact.objects.create(network_node=node, **contact_data)
             self._handle_products(node, products_data)
 
         return node

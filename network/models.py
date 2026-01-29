@@ -3,23 +3,6 @@ from django.db import models
 from django.utils import timezone
 
 
-class Contact(models.Model):
-    email = models.EmailField(verbose_name="Адрес электронной почты")
-    country = models.CharField(max_length=200, verbose_name="Страна")
-    city = models.CharField(max_length=255, verbose_name="Город")
-    street = models.CharField(max_length=255, verbose_name="Улица")
-    building_number = models.CharField(max_length=20, verbose_name="Номер дома")
-
-    class Meta:
-        verbose_name = "Контакты"
-        verbose_name_plural = "Контакты"
-
-    def __str__(self):
-        return (
-            f"{self.country}, {self.city}, ул. {self.street}, д. {self.building_number}"
-        )
-
-
 class Product(models.Model):
     name = models.CharField(max_length=200, verbose_name="Название")
     model = models.CharField(max_length=100, verbose_name="Модель")
@@ -50,9 +33,6 @@ class NetworkNode(models.Model):
     ]
 
     name = models.CharField(max_length=200, verbose_name="Название")
-    contact = models.ForeignKey(
-        to=Contact, on_delete=models.CASCADE, verbose_name="Контакты"
-    )
     products = models.ManyToManyField(
         to=Product, verbose_name="Продукты", related_name="network_nodes"
     )
@@ -179,3 +159,28 @@ class NetworkNode(models.Model):
 
     def __str__(self):
         return f"{self.get_node_type_display()}: {self.name}"
+
+
+class Contact(models.Model):
+    email = models.EmailField(verbose_name="Адрес электронной почты")
+    country = models.CharField(max_length=200, verbose_name="Страна")
+    city = models.CharField(max_length=255, verbose_name="Город")
+    street = models.CharField(max_length=255, verbose_name="Улица")
+    building_number = models.CharField(max_length=20, verbose_name="Номер дома")
+
+    network_node = models.OneToOneField(
+        NetworkNode,
+        on_delete=models.CASCADE,
+        related_name="contact",
+        null=True,
+        blank=True
+    )
+
+    class Meta:
+        verbose_name = "Контакты"
+        verbose_name_plural = "Контакты"
+
+    def __str__(self):
+        return (
+            f"{self.country}, {self.city}, ул. {self.street}, д. {self.building_number}"
+        )
