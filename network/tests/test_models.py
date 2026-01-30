@@ -1,12 +1,11 @@
 from datetime import date, timedelta
 
+import pytest
 from django.core.exceptions import ValidationError
 from django.db.models import ProtectedError
 from django.utils import timezone
 
-import pytest
-
-from network.models import Contact, Product, NetworkNode
+from network.models import Contact, NetworkNode, Product
 
 
 @pytest.mark.django_db
@@ -63,8 +62,11 @@ class TestContact:
 
     def test_string_representation(self):
         """Проверка строкового представления."""
-        expected = f"{self.contact_obj.country}, {self.contact_obj.city}, ул. {self.contact_obj.street}, д. {self.contact_obj.building_number}"
-        assert str(self.contact_obj) == expected
+        obj = self.contact_obj
+        expected = (
+            f"{obj.country}, {obj.city}, ул. {obj.street}, д. {obj.building_number}"
+        )
+        assert str(obj) == expected
 
     def test_invalid_email(self):
         """Проверка назначения некорректного email."""
@@ -175,7 +177,7 @@ class TestNetworkNode:
         assert node.contact == contact
         assert node.products.count() == 1
         assert product in node.products.all()
-        assert node.supplier == None
+        assert node.supplier is None
         assert node.supplier_debt == network_node_data_in_dict["supplier_debt"]
         assert node.node_type == network_node_data_in_dict["node_type"]
         assert node.level == 0

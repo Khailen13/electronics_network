@@ -1,12 +1,8 @@
-from django.contrib import admin, messages
-from django.db import transaction
-from django.db.models.signals import m2m_changed
-from django.dispatch import receiver
 from django import forms
+from django.contrib import admin, messages
 from django.utils.html import format_html
-from rest_framework.exceptions import ValidationError
 
-from network.models import NetworkNode, Product, Contact
+from network.models import Contact, NetworkNode, Product
 
 
 @admin.register(Contact)

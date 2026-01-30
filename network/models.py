@@ -90,8 +90,14 @@ class NetworkNode(models.Model):
 
         if self.pk:
             old = NetworkNode.objects.get(pk=self.pk)
-            if old.node_type in ["retail", "entrepreneur"] and self.node_type == "factory" and old.supplier_debt > 0:
-                raise ValidationError("Нельзя изменить тип звена на 'завод' при наличии задолженности перед поставщиком.")
+            if (
+                old.node_type in ["retail", "entrepreneur"]
+                and self.node_type == "factory"
+                and old.supplier_debt > 0
+            ):
+                raise ValidationError(
+                    "Нельзя изменить тип звена на 'завод' при наличии задолженности перед поставщиком."
+                )
 
         if self.pk:
             self._validate_product_removal_for_clients()
@@ -111,9 +117,7 @@ class NetworkNode(models.Model):
             )
 
         if not self._new_supplier_has_all_products():
-            raise ValidationError(
-                "У нового поставщика нет необходимых продуктов."
-            )
+            raise ValidationError("У нового поставщика нет необходимых продуктов.")
 
     def _would_exceed_max_depth(self):
         """Проверяет непревышение максимальной глубины иерархии."""
@@ -159,11 +163,10 @@ class NetworkNode(models.Model):
             client_products = set(client.products.all())
             problematic = client_products & removed_products
             if problematic:
-                product_names = ", ". join(str(p) for p in problematic)
+                product_names = ", ".join(str(p) for p in problematic)
                 raise ValidationError(
                     f"Нельзя удалить {product_names} - они должны поставляться клиенту '{client.name}'."
                 )
-
 
     def clean_products(self):
         """Проверяет наличие продуктов у поставщика."""
@@ -179,7 +182,9 @@ class NetworkNode(models.Model):
             product_names = ", ".join(str(p) for p in invalid_products)
             supplier_name = self.supplier.name
 
-            raise ValidationError(f"Следующие продукты отсутствуют у поставщика '{supplier_name}': {product_names}.")
+            raise ValidationError(
+                f"Следующие продукты отсутствуют у поставщика '{supplier_name}': {product_names}."
+            )
 
     def save(self, *args, **kwargs):
         """Сохраняет после валидации."""
@@ -202,7 +207,7 @@ class Contact(models.Model):
         on_delete=models.CASCADE,
         related_name="contact",
         null=True,
-        blank=True
+        blank=True,
     )
 
     class Meta:

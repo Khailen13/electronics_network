@@ -1,10 +1,10 @@
-from decimal import Decimal
 import random
+from decimal import Decimal
 
 from django.core.management.base import BaseCommand
 from faker import Faker
 
-from network.models import Contact, Product, NetworkNode
+from network.models import Contact, NetworkNode, Product
 
 
 class Command(BaseCommand):
@@ -30,9 +30,19 @@ class Command(BaseCommand):
 
         if clear:
             self.stdout.write("Очистка старых данных...")
+            Contact.objects.all().delete()
+            from django.db import connection
+
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM network_networknode_products;")
+
+            with connection.cursor() as cursor:
+                cursor.execute("UPDATE network_networknode SET supplier_id = NULL;")
+
             NetworkNode.objects.all().delete()
             Product.objects.all().delete()
-            Contact.objects.all().delete()
+
+            self.stdout.write("Старые данные очищены.")
 
         self.stdout.write("Создание демонстрационных данных...")
 
@@ -56,10 +66,8 @@ class Command(BaseCommand):
             for _ in range(random.randint(2, 4)):
                 product = Product.objects.create(
                     name=random.choice(product_names),
-                    model=f"MDL-{random.randint(1,999)}",
-                    release_date=fake.date_between(
-                        start_date="-3y", end_date="today"
-                    ),
+                    model=f"MDL-{random.randint(1, 999)}",
+                    release_date=fake.date_between(start_date="-3y", end_date="today"),
                 )
                 products.append(product)
 
@@ -70,18 +78,18 @@ class Command(BaseCommand):
             if node_level1:
                 self.create_node(fake, supplier=node_level1, products=products)
 
-            if (i +1) % 5 == 0:
+            if (i + 1) % 5 == 0:
                 self.stdout.write(
                     self.style.SUCCESS(
-                        f"Успешно созданы данные для {i+1}/{count} сетей."
+                        f"Успешно созданы данные для {i + 1}/{count} сетей."
                     )
                 )
 
         self.stdout.write(
-            self.style.SUCCESS(f"Создание демонстрационных данных успешно завершено.")
+            self.style.SUCCESS("Создание демонстрационных данных успешно завершено.")
         )
 
-    def create_contact(self, fake):
+    def create_contact(self, fake, node):
         """Создает контакты для демонстрации."""
 
         contact = Contact.objects.create(
@@ -90,6 +98,7 @@ class Command(BaseCommand):
             city=fake.city(),
             street=fake.street_name(),
             building_number=fake.building_number(),
+            network_node=node,
         )
         return contact
 
@@ -116,12 +125,12 @@ class Command(BaseCommand):
             supplier_debt = Decimal(str(round(random.uniform(10_000, 300_000), 2)))
 
         node = NetworkNode.objects.create(
-                name=name,
-                node_type=node_type,
-                contact=self.create_contact(fake),
-                supplier=supplier,
-                supplier_debt=supplier_debt,
-            )
+            name=name,
+            node_type=node_type,
+            supplier=supplier,
+            supplier_debt=supplier_debt,
+        )
         node.products.set(products)
+        self.create_contact(fake, node)
 
         return node

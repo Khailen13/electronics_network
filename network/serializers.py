@@ -1,12 +1,10 @@
-from logging import raiseExceptions
-
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from django.core.exceptions import ValidationError as DjangoValidationError
-from django.utils import timezone
 
-from network.models import Contact, Product, NetworkNode
+from network.models import Contact, NetworkNode, Product
 
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -31,6 +29,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
 class NetworkNodeWriteSerializer(serializers.ModelSerializer):
     """Сериализатор для создания и обновления звена сети."""
+
     contact = ContactSerializer()
     products = ProductSerializer(many=True, required=False)
 
@@ -50,7 +49,7 @@ class NetworkNodeWriteSerializer(serializers.ModelSerializer):
             product, created = Product.objects.get_or_create(
                 name=product_data["name"],
                 model=product_data["model"],
-                release_date=product_data["release_date"]
+                release_date=product_data["release_date"],
             )
             product_objects.append(product)
 
@@ -59,9 +58,7 @@ class NetworkNodeWriteSerializer(serializers.ModelSerializer):
         try:
             node.clean_products()
         except DjangoValidationError as e:
-            raise serializers.ValidationError({
-                "products": str(e)
-            })
+            raise serializers.ValidationError({"products": str(e)})
 
     def create(self, validated_data):
         """Создание звена с вложенными контактами и продуктами."""
@@ -86,9 +83,11 @@ class NetworkNodeWriteSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         """Обновление данных звена с запретом изменения долга перед поставщиком."""
         if "supplier_debt" in validated_data:
-            raise serializers.ValidationError({
-                "supplier_debt": "Изменение задолженности перед поставщиком через API запрещено."
-            })
+            raise serializers.ValidationError(
+                {
+                    "supplier_debt": "Изменение задолженности перед поставщиком через API запрещено."
+                }
+            )
 
         contact_data = validated_data.pop("contact", None)
         products_data = validated_data.pop("products", None)
@@ -101,9 +100,7 @@ class NetworkNodeWriteSerializer(serializers.ModelSerializer):
 
             if contact_data:
                 serializer = ContactSerializer(
-                    instance.contact,
-                    data=contact_data,
-                    partial=True
+                    instance.contact, data=contact_data, partial=True
                 )
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
@@ -124,7 +121,8 @@ class NetworkNodeWriteSerializer(serializers.ModelSerializer):
                             if problematic:
                                 product_names = ", ".join(str(p) for p in problematic)
                                 raise ValidationError(
-                                    f"Нельзя удалить {product_names} - они должны поставляться клиенту '{client.name}'."
+                                    f"Нельзя удалить продукты: {product_names}."
+                                    f"Они должны поставляться клиенту '{client.name}'."
                                 )
 
                 instance.full_clean()
@@ -143,6 +141,7 @@ class NetworkNodeWriteSerializer(serializers.ModelSerializer):
 
 class NetworkNodeReadSerializer(serializers.ModelSerializer):
     """Сериализатор для чтения звеньев сети с вложенными данными."""
+
     contact = ContactSerializer(read_only=True)
     products = ProductSerializer(many=True, read_only=True)
     supplier = serializers.StringRelatedField(read_only=True)

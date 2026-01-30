@@ -1,3 +1,4 @@
+from django.db.models import ProtectedError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -7,8 +8,8 @@ from rest_framework.viewsets import ModelViewSet
 from network.filters import NetworkNodeFilter
 from network.models import NetworkNode
 from network.permissions import IsActiveEmployee
-from network.serializers import NetworkNodeWriteSerializer, NetworkNodeReadSerializer
-from django.db.models import ProtectedError
+from network.serializers import (NetworkNodeReadSerializer,
+                                 NetworkNodeWriteSerializer)
 
 
 class NetworkNodeViewSet(ModelViewSet):
@@ -29,6 +30,8 @@ class NetworkNodeViewSet(ModelViewSet):
             return super().destroy(request, *args, **kwargs)
         except ProtectedError:
             return Response(
-                {"error": "Нельзя удалить узел, который является поставщиком для других узлов"},
-                status=status.HTTP_400_BAD_REQUEST
+                {
+                    "error": "Нельзя удалить узел, который является поставщиком для других узлов"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )

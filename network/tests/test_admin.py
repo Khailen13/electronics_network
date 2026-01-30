@@ -1,5 +1,6 @@
 import pytest
 
+
 @pytest.mark.django_db
 class TestAdminPanel:
     """Базовые тесты админ-панели."""
@@ -39,11 +40,9 @@ def test_clear_debt_action(admin_client, network_nodes):
     assert retail.supplier_debt > 0
 
     response = admin_client.post(
-        "/admin/network/networknode/", {
-            "action": "clear_debt",
-            "_selected_action": [retail.id]
-        },
-        follow=True
+        "/admin/network/networknode/",
+        {"action": "clear_debt", "_selected_action": [retail.id]},
+        follow=True,
     )
     assert response.status_code == 200
 

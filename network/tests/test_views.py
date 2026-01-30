@@ -1,6 +1,5 @@
 import pytest
 from rest_framework.test import APIClient
-from network.models import NetworkNode
 
 
 @pytest.mark.django_db

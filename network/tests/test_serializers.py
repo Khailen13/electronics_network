@@ -1,17 +1,12 @@
-from datetime import date, timedelta, datetime
-from django.utils import timezone
+from datetime import date, datetime, timedelta
 
 import pytest
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
-from django.core.exceptions import ValidationError as DjangoCoreValidationError
 
-from network.models import NetworkNode, Contact
-from network.serializers import (
-    NetworkNodeWriteSerializer,
-    ContactSerializer,
-    ProductSerializer,
-    NetworkNodeReadSerializer,
-)
+from network.models import Contact, NetworkNode
+from network.serializers import (ContactSerializer, NetworkNodeReadSerializer,
+                                 NetworkNodeWriteSerializer, ProductSerializer)
 
 
 @pytest.mark.django_db

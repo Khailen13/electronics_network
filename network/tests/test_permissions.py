@@ -1,5 +1,6 @@
 import pytest
 from rest_framework.test import APIRequestFactory
+
 from network.permissions import IsActiveEmployee
 
 
@@ -26,7 +27,7 @@ def test_is_active_employee_permission_inactive_user(inactive_user):
 
 
 @pytest.mark.django_db
-def test_is_active_employee_permission_inactive_user():
+def test_is_active_employee_permission_anonymous_user():
     """Проверяет разрешение доступа у анонимного пользователя."""
     permission = IsActiveEmployee()
     factory = APIRequestFactory()
