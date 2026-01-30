@@ -70,14 +70,14 @@ class NetworkNode(models.Model):
             self.level = self.supplier.level + 1
 
         if self.node_type == "factory" and self.supplier:
-            raise ValidationError("У завода не может быть поставщика")
+            raise ValidationError("У завода не может быть поставщика.")
 
         if self.node_type != "factory" and not self.supplier:
-            raise ValidationError("Укажите поставщика")
+            raise ValidationError("Укажите поставщика.")
 
         if self.level > 2:
             raise ValidationError(
-                f"Торговая сеть с поставщиком {self.supplier} уже имеет 3 уровня. Выберите другого поставщика"
+                f"Торговая сеть с поставщиком {self.supplier} уже имеет 3 уровня. Выберите другого поставщика."
             )
 
         if self.pk and self.supplier and self.supplier.id == self.id:
@@ -88,22 +88,27 @@ class NetworkNode(models.Model):
             if old.supplier_id != self.supplier_id:
                 self._validate_supplier_change(old)
 
+        if self.pk:
+            old = NetworkNode.objects.get(pk=self.pk)
+            if old.node_type in ["retail", "entrepreneur"] and self.node_type == "factory" and old.supplier_debt > 0:
+                raise ValidationError("Нельзя изменить тип звена на 'завод' при наличии задолженности перед поставщиком.")
+
     def _validate_supplier_change(self, old_instance):
         """Валидация изменения поставщика."""
 
         if old_instance.supplier_debt > 0:
             raise ValidationError(
-                "Нельзя изменить поставщика при наличии задолженности"
+                "Нельзя изменить поставщика при наличии задолженности."
             )
 
         if self._would_exceed_max_depth():
             raise ValidationError(
-                "Выбрать указанного поставщика невозможно - это приводит к превышению глубины 3-х уровневой иерархии"
+                "Выбрать указанного поставщика невозможно - это приводит к превышению глубины 3-х уровневой иерархии."
             )
 
         if not self._new_supplier_has_all_products():
             raise ValidationError(
-                "У нового поставщика нет необходимых продуктов"
+                "У нового поставщика нет необходимых продуктов."
             )
 
     def _would_exceed_max_depth(self):
