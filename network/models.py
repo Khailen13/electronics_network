@@ -93,6 +93,10 @@ class NetworkNode(models.Model):
             if old.node_type in ["retail", "entrepreneur"] and self.node_type == "factory" and old.supplier_debt > 0:
                 raise ValidationError("Нельзя изменить тип звена на 'завод' при наличии задолженности перед поставщиком.")
 
+        if self.pk:
+            self._validate_product_removal_for_clients()
+            self.clean_products()
+
     def _validate_supplier_change(self, old_instance):
         """Валидация изменения поставщика."""
 
@@ -140,6 +144,26 @@ class NetworkNode(models.Model):
         supplier_products = set(self.supplier.products.all())
 
         return required_products.issubset(supplier_products)
+
+    def _validate_product_removal_for_clients(self):
+        """Проверяет, что удаление продуктов не нарушает цепочку поставок."""
+        old = NetworkNode.objects.get(pk=self.pk)
+        old_products = set(old.products.all())
+        new_products = set(self.products.all())
+        removed_products = old_products - new_products
+
+        if not removed_products:
+            return
+
+        for client in self.networknode_set.all():
+            client_products = set(client.products.all())
+            problematic = client_products & removed_products
+            if problematic:
+                product_names = ", ". join(str(p) for p in problematic)
+                raise ValidationError(
+                    f"Нельзя удалить {product_names} - они должны поставляться клиенту '{client.name}'."
+                )
+
 
     def clean_products(self):
         """Проверяет наличие продуктов у поставщика."""

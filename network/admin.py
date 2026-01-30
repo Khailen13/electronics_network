@@ -12,6 +12,7 @@ from network.models import NetworkNode, Product, Contact
 @admin.register(Contact)
 class ContactAdmin(admin.ModelAdmin):
     list_display = [
+        "id",
         "email",
         "country",
         "city",
@@ -23,6 +24,7 @@ class ContactAdmin(admin.ModelAdmin):
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = [
+        "id",
         "name",
         "model",
         "release_date",
@@ -38,12 +40,11 @@ class NetworkNodeAdminForm(forms.ModelForm):
         """Валидация формы."""
         cleaned_data = super().clean()
 
-        if not self.errors:
+        if not self.errors and self.instance and self.instance.pk:
             products = cleaned_data.get("products")
             supplier = cleaned_data.get("supplier")
-            node_type = cleaned_data.get("node_type")
 
-            if supplier and node_type != "factory" and products:
+            if supplier and products:
                 supplier_products = set(supplier.products.all())
                 selected_products = set(products)
 
@@ -54,6 +55,20 @@ class NetworkNodeAdminForm(forms.ModelForm):
                         f"Следующие продукты отсутствуют у поставщика '{supplier.name}': {product_names}"
                     )
 
+                old_instance = NetworkNode.objects.get(pk=self.instance.pk)
+                old_products = set(old_instance.products.all())
+                removed_products = old_products - selected_products
+
+                if removed_products:
+                    for client in old_instance.networknode_set.all():
+                        client_products = set(client.products.all())
+                        problematic = client_products & removed_products
+                        if problematic:
+                            product_names = ", ".join(str(p) for p in problematic)
+                            raise forms.ValidationError(
+                                f"Нельзя удалить {product_names} - они нужны клиенту '{client.name}'."
+                            )
+
         return cleaned_data
 
 
@@ -62,6 +77,7 @@ class NetworkNodeAdmin(admin.ModelAdmin):
     form = NetworkNodeAdminForm
 
     list_display = [
+        "id",
         "name",
         "node_type",
         "level",
@@ -83,7 +99,6 @@ class NetworkNodeAdmin(admin.ModelAdmin):
     fields = [
         "name",
         "node_type",
-        "contact",
         "products",
         "supplier",
         "supplier_link_detailed",
@@ -91,6 +106,12 @@ class NetworkNodeAdmin(admin.ModelAdmin):
     ]
 
     actions = ["clear_debt"]
+
+    class ContactInline(admin.StackedInline):
+        model = Contact
+        can_delete = False
+
+    inlines = [ContactInline]
 
     def display_products(self, obj):
         """Отображает список продуктов в общем списке звеньев."""

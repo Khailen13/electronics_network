@@ -94,6 +94,11 @@ class NetworkNodeWriteSerializer(serializers.ModelSerializer):
         products_data = validated_data.pop("products", None)
 
         with transaction.atomic():
+            old_products = set(instance.products.all())
+
+            if products_data is not None:
+                self._handle_products(instance, products_data)
+
             if contact_data:
                 serializer = ContactSerializer(
                     instance.contact,
@@ -107,13 +112,31 @@ class NetworkNodeWriteSerializer(serializers.ModelSerializer):
                 setattr(instance, attr, value)
 
             try:
+                if products_data is not None:
+                    new_products = set(instance.products.all())
+                    removed_products = old_products - new_products
+
+                    if removed_products:
+                        clients = instance.networknode_set.all()
+                        for client in clients:
+                            client_products = set(client.products.all())
+                            problematic = client_products & removed_products
+                            if problematic:
+                                product_names = ", ".join(str(p) for p in problematic)
+                                raise ValidationError(
+                                    f"Нельзя удалить {product_names} - они должны поставляться клиенту '{client.name}'."
+                                )
+
                 instance.full_clean()
+                instance.save()
             except DjangoValidationError as e:
+                if products_data is not None:
+                    instance.products.set(old_products)
                 raise serializers.ValidationError(e.message_dict)
-
-            instance.save()
-
-            self._handle_products(instance, products_data)
+            except ValidationError as e:
+                if products_data is not None:
+                    instance.products.set(old_products)
+                raise e
 
             return instance
 
@@ -128,6 +151,3 @@ class NetworkNodeReadSerializer(serializers.ModelSerializer):
         model = NetworkNode
         fields = "__all__"
         read_only_fields = ["created_at", "level", "supplier_debt"]
-
-
-
