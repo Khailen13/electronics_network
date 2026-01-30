@@ -1,0 +1,19 @@
+[run]
+source = network
+omit =
+    */management/*
+    */migrations/*
+    */tests/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if self.debug:
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+
+show_missing = true
+skip_covered = false
